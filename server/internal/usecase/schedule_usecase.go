@@ -15,6 +15,7 @@ type ScheduleUsecase interface {
 	GetScheduleByID(id string) (*model.Schedule, error)
 	DeleteScheduleByID(id string) error
 	MarkScheduleAsDone(id string) error
+	MarkScheduleAsUndone(id string) error
 }
 
 type scheduleUsecase struct {
@@ -68,5 +69,14 @@ func (s *scheduleUsecase) MarkScheduleAsDone(id string) error {
 		return fmt.Errorf("failed to get schedule by ID: %w", err)
 	}
 	schedule.IsDone = true
+	return s.repo.Update(id, *schedule)
+}
+
+func (s *scheduleUsecase) MarkScheduleAsUndone(id string) error {
+	schedule, err := s.repo.GetByID(id)
+	if err != nil {
+		return fmt.Errorf("failed to get schedule by ID: %w", err)
+	}
+	schedule.IsDone = false
 	return s.repo.Update(id, *schedule)
 }
