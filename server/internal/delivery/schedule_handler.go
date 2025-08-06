@@ -2,6 +2,7 @@ package delivery
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"murim-helper/internal/model"
@@ -19,7 +20,9 @@ func NewScheduleHandler(r *mux.Router, uc usecase.ScheduleUsecase) {
 	r.HandleFunc("/schedule", handler.Generate).Methods("POST")
 	r.HandleFunc("/schedule/{id}", handler.Update).Methods("PUT")
 	r.HandleFunc("/schedule", handler.GetAll).Methods("GET")
-	r.HandleFunc("/schedule/{id}", handler.GetAll).Methods("GET") // Assuming you want to get a specific schedule by ID
+	r.HandleFunc("/schedule/{id}", handler.GetByID).Methods("GET")
+	r.HandleFunc("/schedule/{id}", handler.DeleteByID).Methods("DELETE")
+	r.HandleFunc("/schedule/{id}/done", handler.MarkAsDone).Methods("PUT")
 }
 
 func (h *ScheduleHandler) Generate(w http.ResponseWriter, r *http.Request) {
@@ -62,4 +65,25 @@ func (h *ScheduleHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	json.NewEncoder(w).Encode(result)
+}
+
+func (h *ScheduleHandler) DeleteByID(w http.ResponseWriter, r *http.Request) {
+	id := mux.Vars(r)["id"]
+	err := h.Usecase.DeleteScheduleByID(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *ScheduleHandler) MarkAsDone(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("Marking schedule as done")
+	id := mux.Vars(r)["id"]
+	err := h.Usecase.MarkScheduleAsDone(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
 }

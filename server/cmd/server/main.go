@@ -17,7 +17,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed connect to DB: %v", err)
 	}
-	ai := service.NewOllamaService()
+	ai := service.NewGroqService()
 	uc := usecase.NewScheduleUsecase(repo, ai)
 
 	r := mux.NewRouter()
