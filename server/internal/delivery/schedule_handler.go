@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"net/http"
 
-	"murim-helper/internal/model"
+	"murim-helper/internal/domain"
+	"murim-helper/internal/dto"
 	"murim-helper/internal/usecase"
 	"murim-helper/pkg/httphelper"
 
@@ -21,10 +22,13 @@ func NewScheduleHandler(r *mux.Router, uc usecase.ScheduleUsecase) {
 	r.HandleFunc("/schedule", handler.Generate).Methods("POST")
 	r.HandleFunc("/schedule/{id}", handler.Update).Methods("PUT")
 	r.HandleFunc("/schedule", handler.GetAll).Methods("GET")
+	r.HandleFunc("/schedule/today", handler.GetToday).Methods("GET")
+	r.HandleFunc("/schedule/this-week", handler.GetThisWeek).Methods("GET")
 	r.HandleFunc("/schedule/{id}", handler.GetByID).Methods("GET")
 	r.HandleFunc("/schedule/{id}", handler.DeleteByID).Methods("DELETE")
 	r.HandleFunc("/schedule/{id}/done", handler.MarkAsDone).Methods("PUT")
-	r.HandleFunc("/schedule/{id}/undone", handler.MarkAsUndone).Methods("PUT") // Reuse for marking as undone
+	r.HandleFunc("/schedule/{id}/undone", handler.MarkAsUndone).Methods("PUT")
+	r.HandleFunc("/schedule", handler.DeleteAll).Methods("DELETE")
 }
 
 func (h *ScheduleHandler) GetAll(w http.ResponseWriter, r *http.Request) {
@@ -33,7 +37,8 @@ func (h *ScheduleHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 		httphelper.Error(w, r, http.StatusInternalServerError, "Failed to fetch schedules", 50001)
 		return
 	}
-	httphelper.Success(w, r, http.StatusOK, "Successfully fetched schedules", result)
+	response := dto.ToScheduleResponseDTOs(result)
+	httphelper.Success(w, r, http.StatusOK, "Successfully fetched schedules", response)
 }
 
 func (h *ScheduleHandler) Generate(w http.ResponseWriter, r *http.Request) {
@@ -55,7 +60,7 @@ func (h *ScheduleHandler) Generate(w http.ResponseWriter, r *http.Request) {
 
 func (h *ScheduleHandler) Update(w http.ResponseWriter, r *http.Request) {
 	id := mux.Vars(r)["id"]
-	var updated model.Schedule
+	var updated domain.Schedule
 	if err := json.NewDecoder(r.Body).Decode(&updated); err != nil {
 		httphelper.Error(w, r, http.StatusBadRequest, "Invalid request body", 40002)
 		return
@@ -77,6 +82,16 @@ func (h *ScheduleHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httphelper.Success(w, r, http.StatusOK, "Successfully fetched schedule", result)
+}
+
+func (h *ScheduleHandler) GetToday(w http.ResponseWriter, r *http.Request) {
+	schedules, err := h.Usecase.GetTodaySchedules()
+	if err != nil {
+		httphelper.Error(w, r, http.StatusInternalServerError, "Failed to fetch today's schedules", 50002)
+		return
+	}
+
+	httphelper.Success(w, r, http.StatusOK, "Successfully fetched today's schedule", schedules)
 }
 
 func (h *ScheduleHandler) DeleteByID(w http.ResponseWriter, r *http.Request) {
@@ -109,4 +124,23 @@ func (h *ScheduleHandler) MarkAsUndone(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httphelper.Success(w, r, http.StatusOK, "Successfully marked schedule as undone", nil)
+}
+
+func (h *ScheduleHandler) DeleteAll(w http.ResponseWriter, r *http.Request) {
+	err := h.Usecase.DeleteAll()
+	if err != nil {
+		httphelper.Error(w, r, http.StatusInternalServerError, "Failed to delete all schedules", 50003)
+		return
+	}
+	httphelper.Success(w, r, http.StatusOK, "Successfully deleted all schedules", nil)
+}
+
+func (h *ScheduleHandler) GetThisWeek(w http.ResponseWriter, r *http.Request) {
+	schedules, err := h.Usecase.GetThisWeekSchedules()
+	if err != nil {
+		httphelper.Error(w, r, http.StatusInternalServerError, "Failed to fetch this week's schedules", 50004)
+		return
+	}
+
+	httphelper.Success(w, r, http.StatusOK, "Successfully fetched this week's schedules", schedules)
 }

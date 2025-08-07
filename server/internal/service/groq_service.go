@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"murim-helper/internal/model"
+	"murim-helper/internal/domain"
 )
 
 type groqService struct {
@@ -18,7 +18,7 @@ type groqService struct {
 }
 
 type GroqService interface {
-	GenerateScheduleFromText(description string) ([]model.Schedule, error)
+	GenerateScheduleFromText(description string) ([]domain.Schedule, error)
 }
 
 func NewGroqService() GroqService {
@@ -29,24 +29,28 @@ func NewGroqService() GroqService {
 	return &groqService{ApiKey: apiKey}
 }
 
-func (g *groqService) GenerateScheduleFromText(description string) ([]model.Schedule, error) {
+func (g *groqService) GenerateScheduleFromText(description string) ([]domain.Schedule, error) {
 	prompt := fmt.Sprintf(`
-You are a discipline assistant. Based on this input: "%s",
-generate a full-day schedule in JSON format with title, description, start_time, end_time (HH:MM 24hr format).
-Include morning Bible reading, night prayer, meals, work, gym, and any custom activities.
+	You are a discipline assistant. Based on this input: "%s",
+	generate a full-day schedule in JSON format with title, description, start_time, end_time (in ISO 8601 format like "2025-08-05T07:00:00+07:00").
+	Include morning Bible reading, meals, work, gym, and night prayer — even if the user doesn’t mention them.
 
-Format:
-[
-  {
-    "title": "Task Title",
-    "description": "What it is",
-    "start_time": "(ISO 8601 datetime, example: "2025-08-05T07:00:00+07:00")",
-    "end_time": "(ISO 8601 datetime, example: "2025-08-05T08:00:00+07:00")"
-  }
-]
-Assume today's date is %s. All times must be for today.
-Respond only with valid JSON array and nothing else.
-`, description, time.Now().Format("2006-01-02"))
+	IMPORTANT:
+	- Determine the date based on the user's description (e.g., "tomorrow", "next Monday", or specific date).
+	- ALL tasks, including the default ones, must use the same inferred date.
+	- If no date is mentioned, use today (%s).
+	- Start the day at 06:00 and end at 22:00 in Jakarta timezone (UTC+7).
+
+	Respond ONLY with a valid JSON array like this:
+	[
+		{
+			"title": "Task Title",
+			"description": "What it is",
+			"start_time": "2025-08-05T07:00:00+07:00",
+			"end_time": "2025-08-05T08:00:00+07:00"
+		}
+	]
+	`, description, time.Now().Format("2006-01-02"))
 
 	reqBody := map[string]interface{}{
 		"model": "llama3-70b-8192",
@@ -92,5 +96,5 @@ Respond only with valid JSON array and nothing else.
 	}
 
 	jsonOnly := content[start : end+1]
-	return model.ParseSchedulesFromJSON(jsonOnly)
+	return domain.ParseSchedulesFromJSON(jsonOnly)
 }

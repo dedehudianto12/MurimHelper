@@ -1,4 +1,4 @@
-package model
+package domain
 
 type ApiResponse struct {
 	Status    string      `json:"status"`              // "success" or "error"

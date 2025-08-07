@@ -5,12 +5,12 @@ import (
 	"net/http"
 	"time"
 
-	"murim-helper/internal/model"
+	"murim-helper/internal/domain"
 )
 
 // Success returns a well-structured successful response
 func Success(w http.ResponseWriter, r *http.Request, statusCode int, message string, payload interface{}) {
-	resp := model.ApiResponse{
+	resp := domain.ApiResponse{
 		Status:    "success",
 		Message:   message,
 		Payload:   payload,
@@ -23,7 +23,7 @@ func Success(w http.ResponseWriter, r *http.Request, statusCode int, message str
 
 // Error returns a well-structured error response
 func Error(w http.ResponseWriter, r *http.Request, statusCode int, message string, code int) {
-	resp := model.ApiResponse{
+	resp := domain.ApiResponse{
 		Status:    "error",
 		Message:   message,
 		Code:      code,

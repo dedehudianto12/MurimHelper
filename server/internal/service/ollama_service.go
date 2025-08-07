@@ -8,11 +8,11 @@ import (
 	"net/http"
 	"strings"
 
-	"murim-helper/internal/model"
+	"murim-helper/internal/domain"
 )
 
 type OllamaService interface {
-	GenerateScheduleFromText(description string) ([]model.Schedule, error)
+	GenerateScheduleFromText(description string) ([]domain.Schedule, error)
 }
 
 type ollamaService struct{}
@@ -21,7 +21,7 @@ func NewOllamaService() OllamaService {
 	return &ollamaService{}
 }
 
-func (s *ollamaService) GenerateScheduleFromText(description string) ([]model.Schedule, error) {
+func (s *ollamaService) GenerateScheduleFromText(description string) ([]domain.Schedule, error) {
 	prompt := fmt.Sprintf(`
 You are a discipline assistant. Based on this input: "%s",
 generate a full-day schedule in structured JSON format. 
@@ -72,5 +72,5 @@ Return ONLY valid JSON array.
 
 	jsonOnly := raw[start : end+1]
 
-	return model.ParseSchedulesFromJSON(jsonOnly)
+	return domain.ParseSchedulesFromJSON(jsonOnly)
 }

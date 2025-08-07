@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"os"
 
-	"murim-helper/internal/model"
+	"murim-helper/internal/domain"
 
 	openai "github.com/sashabaranov/go-openai"
 )
 
 type OpenAIService interface {
-	GenerateScheduleFromText(desc string) ([]model.Schedule, error)
+	GenerateScheduleFromText(desc string) ([]domain.Schedule, error)
 }
 
 type openAIService struct {
@@ -27,7 +27,7 @@ func NewOpenAIService() OpenAIService {
 	return &openAIService{client: openai.NewClientWithConfig(config)}
 }
 
-func (o *openAIService) GenerateScheduleFromText(desc string) ([]model.Schedule, error) {
+func (o *openAIService) GenerateScheduleFromText(desc string) ([]domain.Schedule, error) {
 	prompt := fmt.Sprintf(`
 	You are a discipline assistant. Based on this input: "%s",
 	generate a list of structured schedule items in JSON format.
@@ -69,7 +69,7 @@ func (o *openAIService) GenerateScheduleFromText(desc string) ([]model.Schedule,
 
 	// Extract and parse JSON from AI response
 	text := resp.Choices[0].Message.Content
-	schedules, err := model.ParseSchedulesFromJSON(text)
+	schedules, err := domain.ParseSchedulesFromJSON(text)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse AI response: %w", err)
 	}
