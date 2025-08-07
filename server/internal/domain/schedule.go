@@ -9,21 +9,25 @@ import (
 )
 
 type Schedule struct {
-	ID          string    `db:"id" json:"id"`
-	Title       string    `db:"title" json:"title"`
-	Description string    `db:"description" json:"description"`
-	StartTime   time.Time `db:"start_time" json:"start_time"`
-	EndTime     time.Time `db:"end_time" json:"end_time"`
-	IsDone      bool      `db:"is_done" json:"is_done"`
-	CreatedAt   string    `db:"created_at" json:"created_at"`
+	ID          string     `db:"id" json:"id"`
+	Title       string     `db:"title" json:"title"`
+	Description string     `db:"description" json:"description"`
+	StartTime   time.Time  `db:"start_time" json:"start_time"`
+	EndTime     time.Time  `db:"end_time" json:"end_time"`
+	IsDone      bool       `db:"is_done" json:"is_done"`
+	CreatedAt   time.Time  `db:"created_at" json:"created_at"`
+	RepeatType  string     `db:"repeat_type" json:"repeat_type"`
+	RepeatUntil *time.Time `db:"repeat_until" json:"repeat_until,omitempty"`
 }
 
 func ParseSchedulesFromJSON(jsonStr string) ([]Schedule, error) {
 	var rawItems []struct {
-		Title       string `json:"title"`
-		Description string `json:"description"`
-		StartTime   string `json:"start_time"` // ISO format
-		EndTime     string `json:"end_time"`
+		Title       string  `json:"title"`
+		Description string  `json:"description"`
+		StartTime   string  `json:"start_time"` // ISO format
+		EndTime     string  `json:"end_time"`
+		RepeatType  string  `json:"repeat_type"`
+		RepeatUntil *string `json:"repeat_until"`
 	}
 
 	err := json.Unmarshal([]byte(jsonStr), &rawItems)
@@ -40,6 +44,14 @@ func ParseSchedulesFromJSON(jsonStr string) ([]Schedule, error) {
 			continue
 		}
 
+		var repeatUntil *time.Time
+		if item.RepeatUntil != nil && *item.RepeatUntil != "" {
+			t, err := time.Parse(time.RFC3339, *item.RepeatUntil)
+			if err == nil {
+				repeatUntil = &t
+			}
+		}
+
 		schedules = append(schedules, Schedule{
 			ID:          uuid.NewString(),
 			Title:       item.Title,
@@ -47,6 +59,8 @@ func ParseSchedulesFromJSON(jsonStr string) ([]Schedule, error) {
 			StartTime:   start,
 			EndTime:     end,
 			IsDone:      false,
+			RepeatType:  item.RepeatType,
+			RepeatUntil: repeatUntil,
 		})
 	}
 

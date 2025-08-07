@@ -6,38 +6,25 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/lib/pq"
 )
 
-type SQLiteRepo struct {
+type PostgresRepo struct {
 	db *sqlx.DB
 }
 
-func NewSQLiteRepo(dbPath string) (*SQLiteRepo, error) {
-	db, err := sqlx.Open("sqlite3", dbPath)
+func NewPostgresRepo(connStr string) (*PostgresRepo, error) {
+	db, err := sqlx.Open("postgres", connStr)
 	if err != nil {
 		return nil, err
 	}
-
-	schema := `
-	CREATE TABLE IF NOT EXISTS schedules (
-		id TEXT PRIMARY KEY,
-		title TEXT NOT NULL,
-		description TEXT,
-		start_time DATETIME NOT NULL,
-		end_time DATETIME NOT NULL,
-		is_done BOOLEAN DEFAULT FALSE,
-		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-	);`
-	db.MustExec(schema)
-
-	return &SQLiteRepo{db: db}, nil
+	return &PostgresRepo{db: db}, nil
 }
 
-func (r *SQLiteRepo) SaveMany(schedules []domain.Schedule) error {
+func (r *PostgresRepo) SaveMany(schedules []domain.Schedule) error {
 	query := `INSERT INTO schedules 
 	(id, title, description, start_time, end_time, is_done) 
-	VALUES (?, ?, ?, ?, ?, ?)`
+	VALUES ($1, $2, $3, $4, $5, $6)`
 
 	for _, s := range schedules {
 		_, err := r.db.Exec(query,
@@ -49,33 +36,33 @@ func (r *SQLiteRepo) SaveMany(schedules []domain.Schedule) error {
 	return nil
 }
 
-func (r *SQLiteRepo) Update(id string, updated domain.Schedule) error {
+func (r *PostgresRepo) Update(id string, updated domain.Schedule) error {
 	query := `
 	UPDATE schedules
-	SET title = ?, description = ?, start_time = ?, end_time = ?, is_done = ?
-	WHERE id = ?`
+	SET title = $1, description = $2, start_time = $3, end_time = $4, is_done = $5
+	WHERE id = $6`
 
 	_, err := r.db.Exec(query,
 		updated.Title, updated.Description, updated.StartTime, updated.EndTime, updated.IsDone, id)
 	return err
 }
 
-func (r *SQLiteRepo) GetAll() ([]domain.Schedule, error) {
+func (r *PostgresRepo) GetAll() ([]domain.Schedule, error) {
 	var schedules []domain.Schedule
 	err := r.db.Select(&schedules, `SELECT * FROM schedules ORDER BY start_time ASC`)
 	return schedules, err
 }
 
-func (r *SQLiteRepo) GetByID(id string) (*domain.Schedule, error) {
+func (r *PostgresRepo) GetByID(id string) (*domain.Schedule, error) {
 	var schedule domain.Schedule
-	err := r.db.Get(&schedule, `SELECT * FROM schedules WHERE id = ?`, id)
+	err := r.db.Get(&schedule, `SELECT * FROM schedules WHERE id = $1`, id)
 	if err != nil {
 		return nil, err
 	}
 	return &schedule, nil
 }
 
-func (r *SQLiteRepo) GetTodaySchedules() ([]domain.Schedule, error) {
+func (r *PostgresRepo) GetTodaySchedules() ([]domain.Schedule, error) {
 	loc := time.FixedZone("Asia/Jakarta", 7*3600)
 	now := time.Now().In(loc)
 	startOfDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc)
@@ -84,7 +71,7 @@ func (r *SQLiteRepo) GetTodaySchedules() ([]domain.Schedule, error) {
 	query := `
 	SELECT id, title, description, start_time, end_time, is_done, created_at
 	FROM schedules
-	WHERE start_time >= ? AND start_time < ?
+	WHERE start_time >= $1 AND start_time < $2
 	ORDER BY start_time ASC
 	`
 
@@ -112,7 +99,7 @@ func (r *SQLiteRepo) GetTodaySchedules() ([]domain.Schedule, error) {
 	return schedules, nil
 }
 
-func (r *SQLiteRepo) GetThisWeekSchedules() ([]domain.Schedule, error) {
+func (r *PostgresRepo) GetThisWeekSchedules() ([]domain.Schedule, error) {
 	loc := time.FixedZone("Asia/Jakarta", 7*3600)
 	now := time.Now().In(loc)
 
@@ -128,7 +115,7 @@ func (r *SQLiteRepo) GetThisWeekSchedules() ([]domain.Schedule, error) {
 	query := `
 	SELECT id, title, description, start_time, end_time, is_done, created_at
 	FROM schedules
-	WHERE start_time >= ? AND start_time < ?
+	WHERE start_time >= $1 AND start_time < $2
 	ORDER BY start_time ASC
 	`
 
@@ -151,12 +138,12 @@ func (r *SQLiteRepo) GetThisWeekSchedules() ([]domain.Schedule, error) {
 	return schedules, nil
 }
 
-func (r *SQLiteRepo) DeleteByID(id string) error {
-	_, err := r.db.Exec(`DELETE FROM schedules WHERE id = ?`, id)
+func (r *PostgresRepo) DeleteByID(id string) error {
+	_, err := r.db.Exec(`DELETE FROM schedules WHERE id = $1`, id)
 	return err
 }
 
-func (r *SQLiteRepo) DeleteAll() error {
+func (r *PostgresRepo) DeleteAll() error {
 	_, err := r.db.Exec(`DELETE FROM schedules`)
 	return err
 }

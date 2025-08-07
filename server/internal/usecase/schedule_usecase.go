@@ -22,13 +22,13 @@ type ScheduleUsecase interface {
 }
 
 type scheduleUsecase struct {
-	repo *repository.SQLiteRepo
+	repo *repository.PostgresRepo
 	// openai service.OpenAIService
 	// ollamaAI service.OllamaService
 	groqAI service.GroqService
 }
 
-func NewScheduleUsecase(r *repository.SQLiteRepo, ai service.GroqService) ScheduleUsecase {
+func NewScheduleUsecase(r *repository.PostgresRepo, ai service.GroqService) ScheduleUsecase {
 	return &scheduleUsecase{repo: r, groqAI: ai}
 }
 

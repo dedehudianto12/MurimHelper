@@ -81,7 +81,8 @@ func (h *ScheduleHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 		httphelper.Error(w, r, http.StatusNotFound, "Schedule not found", 40401)
 		return
 	}
-	httphelper.Success(w, r, http.StatusOK, "Successfully fetched schedule", result)
+	response := dto.ToScheduleResponseDTO(*result)
+	httphelper.Success(w, r, http.StatusOK, "Successfully fetched schedule", response)
 }
 
 func (h *ScheduleHandler) GetToday(w http.ResponseWriter, r *http.Request) {

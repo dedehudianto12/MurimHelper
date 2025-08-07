@@ -6,6 +6,12 @@ import (
 )
 
 func ToScheduleResponseDTO(s domain.Schedule) ScheduleResponseDTO {
+	var repeatUntil *string
+	if s.RepeatUntil != nil {
+		str := s.RepeatUntil.Format(time.RFC3339)
+		repeatUntil = &str
+	}
+
 	return ScheduleResponseDTO{
 		ID:          s.ID,
 		Title:       s.Title,
@@ -13,7 +19,9 @@ func ToScheduleResponseDTO(s domain.Schedule) ScheduleResponseDTO {
 		StartTime:   s.StartTime.Format(time.RFC3339),
 		EndTime:     s.EndTime.Format(time.RFC3339),
 		IsDone:      s.IsDone,
-		CreatedAt:   s.CreatedAt,
+		CreatedAt:   s.CreatedAt.Format(time.RFC3339),
+		RepeatType:  s.RepeatType,
+		RepeatUntil: repeatUntil,
 	}
 }
 

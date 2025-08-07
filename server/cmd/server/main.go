@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net/http"
+	"os"
 
 	"murim-helper/internal/delivery"
 	"murim-helper/internal/repository"
@@ -13,19 +14,18 @@ import (
 )
 
 func main() {
-	repo, err := repository.NewSQLiteRepo("schedules.db")
+	connStr := os.Getenv("POSTGRES_CONN") // e.g. "postgres://user:pass@localhost:5432/dbname?sslmode=disable"
+	repo, err := repository.NewPostgresRepo(connStr)
 	if err != nil {
-		log.Fatalf("Failed connect to DB: %v", err)
+		log.Fatalf("Failed to connect to DB: %v", err)
 	}
+
 	ai := service.NewGroqService()
 	uc := usecase.NewScheduleUsecase(repo, ai)
 
 	r := mux.NewRouter()
 	delivery.NewScheduleHandler(r, uc)
 
-	if err != nil {
-		log.Fatalf("Failed to create repository: %v", err)
-	}
 	log.Println("Server running on :8080")
 	log.Fatal(http.ListenAndServe(":8080", r))
 }
