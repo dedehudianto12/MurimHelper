@@ -233,6 +233,11 @@ func (h *ScheduleHandler) GetToday(w http.ResponseWriter, r *http.Request) {
 	filter := dto.ScheduleFilter{
 		StartAfter:  &startOfDay,
 		StartBefore: &endOfDay,
+		SortBy:      r.URL.Query().Get("sort_by"),
+		SortOrder:   strings.ToLower(r.URL.Query().Get("order")),
+	}
+	if filter.SortOrder != "asc" && filter.SortOrder != "desc" {
+		filter.SortOrder = "asc"
 	}
 
 	schedules, _, err := h.Usecase.GetAllSchedules(ctx, 1, 100, filter)
@@ -262,6 +267,11 @@ func (h *ScheduleHandler) GetThisWeek(w http.ResponseWriter, r *http.Request) {
 	filter := dto.ScheduleFilter{
 		StartAfter:  &startOfWeek,
 		StartBefore: &endOfWeek,
+		SortBy:      r.URL.Query().Get("sort_by"),
+		SortOrder:   strings.ToLower(r.URL.Query().Get("order")),
+	}
+	if filter.SortOrder != "asc" && filter.SortOrder != "desc" {
+		filter.SortOrder = "asc"
 	}
 
 	schedules, _, err := h.Usecase.GetAllSchedules(ctx, 1, 500, filter)
