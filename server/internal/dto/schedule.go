@@ -1,5 +1,7 @@
 package dto
 
+import "time"
+
 type ScheduleCreateDTO struct {
 	Title       string  `json:"title"`
 	Description string  `json:"description"`
@@ -29,4 +31,23 @@ type ScheduleResponseDTO struct {
 	CreatedAt   string  `json:"created_at"`
 	RepeatType  string  `json:"repeat_type"`
 	RepeatUntil *string `json:"repeat_until,omitempty"`
+}
+
+type CreateScheduleRequest struct {
+	Title       string     `json:"title"`
+	Description string     `json:"description"`
+	StartTime   time.Time  `json:"start_time"`
+	EndTime     time.Time  `json:"end_time"`
+	RepeatType  string     `json:"repeat_type"`
+	RepeatUntil *time.Time `json:"repeat_until,omitempty"`
+}
+
+type UpdateScheduleRequest struct {
+	Title       *string    `json:"title,omitempty"`
+	Description *string    `json:"description,omitempty"`
+	StartTime   *time.Time `json:"start_time,omitempty"`
+	EndTime     *time.Time `json:"end_time,omitempty"`
+	IsDone      *bool      `json:"is_done,omitempty"`
+	RepeatType  *string    `json:"repeat_type,omitempty"`
+	RepeatUntil *time.Time `json:"repeat_until,omitempty"`
 }

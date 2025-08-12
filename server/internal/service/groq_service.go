@@ -39,7 +39,7 @@ func (g *groqService) GenerateScheduleFromText(description string) ([]domain.Sch
 	- Determine the date based on the user's description (e.g., "tomorrow", "next Monday", or specific date).
 	- ALL tasks, including the default ones, must use the same inferred date.
 	- If no date is mentioned, use today (%s).
-	- Start the day at 06:00 and end at 22:00 in Jakarta timezone (UTC+7).
+	- Start the day at 07:00 and end at 23:00 in Jakarta timezone (UTC+7).
 
 	Respond ONLY with a valid JSON array like this:
 	[
