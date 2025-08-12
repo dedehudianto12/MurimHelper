@@ -63,6 +63,48 @@ func parsePagination(r *http.Request) (page, limit int) {
 	return
 }
 
+func parseScheduleFilter(r *http.Request) dto.ScheduleFilter {
+	var isDonePtr *bool
+	if isDoneStr := r.URL.Query().Get("is_done"); isDoneStr != "" {
+		val := strings.ToLower(isDoneStr) == "true"
+		isDonePtr = &val
+	}
+
+	repeatType := r.URL.Query().Get("repeat_type")
+	search := r.URL.Query().Get("search")
+
+	var startAfterPtr *time.Time
+	if sa := r.URL.Query().Get("start_after"); sa != "" {
+		if t, err := time.Parse(time.RFC3339, sa); err == nil {
+			startAfterPtr = &t
+		}
+	}
+
+	var startBeforePtr *time.Time
+	if sb := r.URL.Query().Get("start_before"); sb != "" {
+		if t, err := time.Parse(time.RFC3339, sb); err == nil {
+			startBeforePtr = &t
+		}
+	}
+
+	// Sorting
+	sortBy := r.URL.Query().Get("sort_by")
+	sortOrder := strings.ToLower(r.URL.Query().Get("order"))
+	if sortOrder != "asc" && sortOrder != "desc" {
+		sortOrder = "asc" // default
+	}
+
+	return dto.ScheduleFilter{
+		IsDone:      isDonePtr,
+		RepeatType:  repeatType,
+		Search:      search,
+		StartAfter:  startAfterPtr,
+		StartBefore: startBeforePtr,
+		SortBy:      sortBy,
+		SortOrder:   sortOrder,
+	}
+}
+
 // ======================
 // Handlers
 // ======================
@@ -71,16 +113,23 @@ func (h *ScheduleHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := withTimeout(r, 5*time.Second)
 	defer cancel()
 
-	// Pagination support
-	// page, limit := parsePagination(r)
+	page, limit := parsePagination(r)
+	filter := parseScheduleFilter(r)
 
-	result, err := h.Usecase.GetAllSchedules(ctx /* optionally pass page, limit */)
+	schedules, total, err := h.Usecase.GetAllSchedules(ctx, page, limit, filter)
 	if err != nil {
-		log.Printf("[GetAll] error: %v", err)
 		httphelper.Error(w, r, http.StatusInternalServerError, "Failed to fetch schedules", 50001)
 		return
 	}
-	response := dto.ToScheduleResponseDTOs(result)
+
+	response := dto.PaginatedResponse{
+		Data:       dto.ToScheduleResponseDTOs(schedules),
+		Page:       page,
+		Limit:      limit,
+		TotalItems: total,
+		TotalPages: (total + limit - 1) / limit,
+	}
+
 	httphelper.Success(w, r, http.StatusOK, "Successfully fetched schedules", response)
 }
 
@@ -176,9 +225,18 @@ func (h *ScheduleHandler) GetToday(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := withTimeout(r, 5*time.Second)
 	defer cancel()
 
-	schedules, err := h.Usecase.GetTodaySchedules(ctx)
+	loc := time.FixedZone("Asia/Jakarta", 7*3600)
+	now := time.Now().In(loc)
+	startOfDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc)
+	endOfDay := startOfDay.Add(24 * time.Hour)
+
+	filter := dto.ScheduleFilter{
+		StartAfter:  &startOfDay,
+		StartBefore: &endOfDay,
+	}
+
+	schedules, _, err := h.Usecase.GetAllSchedules(ctx, 1, 100, filter)
 	if err != nil {
-		log.Printf("[GetToday] error: %v", err)
 		httphelper.Error(w, r, http.StatusInternalServerError, "Failed to fetch today's schedules", 50006)
 		return
 	}
@@ -190,9 +248,24 @@ func (h *ScheduleHandler) GetThisWeek(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := withTimeout(r, 5*time.Second)
 	defer cancel()
 
-	schedules, err := h.Usecase.GetThisWeekSchedules(ctx)
+	loc := time.FixedZone("Asia/Jakarta", 7*3600)
+	now := time.Now().In(loc)
+
+	weekday := int(now.Weekday())
+	if weekday == 0 {
+		weekday = 7
+	}
+	monday := now.AddDate(0, 0, -weekday+1)
+	startOfWeek := time.Date(monday.Year(), monday.Month(), monday.Day(), 0, 0, 0, 0, loc)
+	endOfWeek := startOfWeek.AddDate(0, 0, 7)
+
+	filter := dto.ScheduleFilter{
+		StartAfter:  &startOfWeek,
+		StartBefore: &endOfWeek,
+	}
+
+	schedules, _, err := h.Usecase.GetAllSchedules(ctx, 1, 500, filter)
 	if err != nil {
-		log.Printf("[GetThisWeek] error: %v", err)
 		httphelper.Error(w, r, http.StatusInternalServerError, "Failed to fetch this week's schedules", 50007)
 		return
 	}

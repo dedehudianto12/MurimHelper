@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"murim-helper/internal/domain"
+	"murim-helper/internal/dto"
 	"murim-helper/internal/repository"
 	"murim-helper/internal/service"
 	"strings"
@@ -15,10 +16,8 @@ import (
 type ScheduleUsecase interface {
 	GenerateSchedule(ctx context.Context, description string) ([]domain.Schedule, error)
 	UpdateSchedule(ctx context.Context, id string, updated domain.Schedule) error
-	GetAllSchedules(ctx context.Context) ([]domain.Schedule, error)
+	GetAllSchedules(ctx context.Context, page, limit int, filter dto.ScheduleFilter) ([]domain.Schedule, int, error)
 	GetScheduleByID(ctx context.Context, id string) (*domain.Schedule, error)
-	GetTodaySchedules(ctx context.Context) ([]domain.Schedule, error)
-	GetThisWeekSchedules(ctx context.Context) ([]domain.Schedule, error)
 	DeleteScheduleByID(ctx context.Context, id string) error
 	MarkScheduleAsDone(ctx context.Context, id string) error
 	MarkScheduleAsUndone(ctx context.Context, id string) error
@@ -96,8 +95,12 @@ func (s *scheduleUsecase) UpdateSchedule(ctx context.Context, id string, updated
 	return s.repo.Update(ctx, id, updated)
 }
 
-func (s *scheduleUsecase) GetAllSchedules(ctx context.Context) ([]domain.Schedule, error) {
-	return s.repo.GetAll(ctx)
+func (s *scheduleUsecase) GetAllSchedules(ctx context.Context, page, limit int, filter dto.ScheduleFilter) ([]domain.Schedule, int, error) {
+	schedules, total, err := s.repo.GetAll(ctx, page, limit, filter)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to get schedules: %w", err)
+	}
+	return schedules, total, nil
 }
 
 func (s *scheduleUsecase) GetScheduleByID(ctx context.Context, id string) (*domain.Schedule, error) {
@@ -105,30 +108,6 @@ func (s *scheduleUsecase) GetScheduleByID(ctx context.Context, id string) (*doma
 		return nil, errors.New("id cannot be empty")
 	}
 	return s.repo.GetByID(ctx, id)
-}
-
-func (s *scheduleUsecase) GetTodaySchedules(ctx context.Context) ([]domain.Schedule, error) {
-	loc := time.FixedZone("Asia/Jakarta", 7*3600)
-	now := time.Now().In(loc)
-	startOfDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc)
-	endOfDay := startOfDay.Add(24 * time.Hour)
-
-	return s.repo.GetTodaySchedules(ctx, startOfDay.Format(time.RFC3339), endOfDay.Format(time.RFC3339))
-}
-
-func (s *scheduleUsecase) GetThisWeekSchedules(ctx context.Context) ([]domain.Schedule, error) {
-	loc := time.FixedZone("Asia/Jakarta", 7*3600)
-	now := time.Now().In(loc)
-
-	weekday := int(now.Weekday())
-	if weekday == 0 {
-		weekday = 7
-	}
-	monday := now.AddDate(0, 0, -weekday+1)
-	startOfWeek := time.Date(monday.Year(), monday.Month(), monday.Day(), 0, 0, 0, 0, loc)
-	endOfWeek := startOfWeek.AddDate(0, 0, 7)
-
-	return s.repo.GetThisWeekSchedules(ctx, startOfWeek.Format(time.RFC3339), endOfWeek.Format(time.RFC3339))
 }
 
 func (s *scheduleUsecase) DeleteScheduleByID(ctx context.Context, id string) error {

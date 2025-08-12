@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"murim-helper/internal/domain"
+	"murim-helper/internal/dto"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
@@ -81,13 +82,75 @@ func (r *PostgresRepo) Update(ctx context.Context, id string, updated domain.Sch
 	return nil
 }
 
-func (r *PostgresRepo) GetAll(ctx context.Context) ([]domain.Schedule, error) {
+func (r *PostgresRepo) GetAll(ctx context.Context, page, limit int, filter dto.ScheduleFilter) ([]domain.Schedule, int, error) {
 	var schedules []domain.Schedule
-	err := r.db.SelectContext(ctx, &schedules, `SELECT * FROM schedules ORDER BY start_time ASC`)
-	if err != nil {
-		return nil, fmt.Errorf("get all failed: %w", err)
+	var args []interface{}
+	var conditions []string
+
+	if filter.IsDone != nil {
+		args = append(args, *filter.IsDone)
+		conditions = append(conditions, fmt.Sprintf("is_done = $%d", len(args)))
 	}
-	return schedules, nil
+	if filter.RepeatType != "" {
+		args = append(args, filter.RepeatType)
+		conditions = append(conditions, fmt.Sprintf("repeat_type = $%d", len(args)))
+	}
+	if filter.Search != "" {
+		args = append(args, "%"+filter.Search+"%")
+		args = append(args, "%"+filter.Search+"%")
+		conditions = append(conditions, fmt.Sprintf("(title ILIKE $%d OR description ILIKE $%d)", len(args)-1, len(args)))
+	}
+	if filter.StartAfter != nil {
+		args = append(args, *filter.StartAfter)
+		conditions = append(conditions, fmt.Sprintf("start_time >= $%d", len(args)))
+	}
+	if filter.StartBefore != nil {
+		args = append(args, *filter.StartBefore)
+		conditions = append(conditions, fmt.Sprintf("start_time < $%d", len(args)))
+	}
+
+	query := `SELECT * FROM schedules`
+	if len(conditions) > 0 {
+		query += " WHERE " + strings.Join(conditions, " AND ")
+	}
+
+	// Sorting whitelist
+	allowedSortColumns := map[string]bool{
+		"start_time": true,
+		"end_time":   true,
+		"created_at": true,
+		"title":      true,
+	}
+	sortBy := "start_time" // default
+	if allowedSortColumns[filter.SortBy] {
+		sortBy = filter.SortBy
+	}
+	sortOrder := "ASC"
+	if strings.ToLower(filter.SortOrder) == "desc" {
+		sortOrder = "DESC"
+	}
+	query += fmt.Sprintf(" ORDER BY %s %s", sortBy, sortOrder)
+
+	// Pagination
+	offset := (page - 1) * limit
+	args = append(args, limit, offset)
+	query += fmt.Sprintf(" LIMIT $%d OFFSET $%d", len(args)-1, len(args))
+
+	if err := r.db.SelectContext(ctx, &schedules, query, args...); err != nil {
+		return nil, 0, fmt.Errorf("failed to fetch schedules: %w", err)
+	}
+
+	// Count query
+	countQuery := `SELECT COUNT(*) FROM schedules`
+	if len(conditions) > 0 {
+		countQuery += " WHERE " + strings.Join(conditions, " AND ")
+	}
+	var total int
+	if err := r.db.GetContext(ctx, &total, countQuery, args[:len(args)-2]...); err != nil {
+		return nil, 0, fmt.Errorf("failed to count schedules: %w", err)
+	}
+
+	return schedules, total, nil
 }
 
 func (r *PostgresRepo) GetByID(ctx context.Context, id string) (*domain.Schedule, error) {
@@ -100,32 +163,6 @@ func (r *PostgresRepo) GetByID(ctx context.Context, id string) (*domain.Schedule
 		return nil, fmt.Errorf("get by id failed: %w", err)
 	}
 	return &schedule, nil
-}
-
-func (r *PostgresRepo) GetTodaySchedules(ctx context.Context, startOfDay, endOfDay string) ([]domain.Schedule, error) {
-	var schedules []domain.Schedule
-	query := `
-		SELECT * FROM schedules
-		WHERE start_time >= $1 AND start_time < $2
-		ORDER BY start_time ASC`
-	err := r.db.SelectContext(ctx, &schedules, query, startOfDay, endOfDay)
-	if err != nil {
-		return nil, fmt.Errorf("get today schedules failed: %w", err)
-	}
-	return schedules, nil
-}
-
-func (r *PostgresRepo) GetThisWeekSchedules(ctx context.Context, startOfWeek, endOfWeek string) ([]domain.Schedule, error) {
-	var schedules []domain.Schedule
-	query := `
-		SELECT * FROM schedules
-		WHERE start_time >= $1 AND start_time < $2
-		ORDER BY start_time ASC`
-	err := r.db.SelectContext(ctx, &schedules, query, startOfWeek, endOfWeek)
-	if err != nil {
-		return nil, fmt.Errorf("get this week schedules failed: %w", err)
-	}
-	return schedules, nil
 }
 
 func (r *PostgresRepo) DeleteByID(ctx context.Context, id string) error {

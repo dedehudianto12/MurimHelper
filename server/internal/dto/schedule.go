@@ -51,3 +51,12 @@ type UpdateScheduleRequest struct {
 	RepeatType  *string    `json:"repeat_type,omitempty"`
 	RepeatUntil *time.Time `json:"repeat_until,omitempty"`
 }
+
+// PaginatedResponse is a generic wrapper for paginated API responses
+type PaginatedResponse struct {
+	Data       interface{} `json:"data"`        // The actual list of items
+	Page       int         `json:"page"`        // Current page number
+	Limit      int         `json:"limit"`       // Items per page
+	TotalItems int         `json:"total_items"` // Total number of items in DB
+	TotalPages int         `json:"total_pages"` // Total number of pages
+}
