@@ -14,6 +14,8 @@ import (
 	"strings"
 	"time"
 
+	httpSwagger "github.com/swaggo/http-swagger"
+
 	"github.com/gorilla/mux"
 )
 
@@ -24,6 +26,7 @@ type ScheduleHandler struct {
 func NewScheduleHandler(r *mux.Router, uc usecase.ScheduleUsecase) {
 	handler := &ScheduleHandler{Usecase: uc}
 
+	r.PathPrefix("/docs/").Handler(httpSwagger.WrapHandler)
 	s := r.PathPrefix("/schedule").Subrouter()
 	s.HandleFunc("", handler.Generate).Methods("POST")
 	s.HandleFunc("", handler.GetAll).Methods("GET")
@@ -109,6 +112,22 @@ func parseScheduleFilter(r *http.Request) dto.ScheduleFilter {
 // Handlers
 // ======================
 
+// GetAll godoc
+// @Summary Get all schedules
+// @Description Get all schedules with pagination, filters, and sorting
+// @Tags schedules
+// @Accept json
+// @Produce json
+// @Param page query int false "Page number"
+// @Param limit query int false "Items per page"
+// @Param is_done query bool false "Filter by done status"
+// @Param repeat_type query string false "Filter by repeat type"
+// @Param search query string false "Search in title/description"
+// @Param sort_by query string false "Sort by field (start_time, end_time, created_at, title)"
+// @Param order query string false "Sort order (asc, desc)"
+// @Success 200 {object} dto.PaginatedResponse
+// @Failure 500 {object} httphelper.ErrorResponse
+// @Router /schedule [get]
 func (h *ScheduleHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := withTimeout(r, 5*time.Second)
 	defer cancel()
@@ -178,7 +197,6 @@ func (h *ScheduleHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get existing schedule for merging
 	existing, err := h.Usecase.GetScheduleByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {

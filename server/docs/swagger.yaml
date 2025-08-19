@@ -1,0 +1,90 @@
+basePath: /
+definitions:
+  dto.PaginatedResponse:
+    properties:
+      data:
+        description: The actual list of items
+      limit:
+        description: Items per page
+        type: integer
+      page:
+        description: Current page number
+        type: integer
+      total_items:
+        description: Total number of items in DB
+        type: integer
+      total_pages:
+        description: Total number of pages
+        type: integer
+    type: object
+  httphelper.ErrorResponse:
+    properties:
+      code:
+        example: 50001
+        type: integer
+      message:
+        example: Internal server error
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@murimhelper.local
+    name: API Support
+  description: This is the API documentation for Murim Helper (schedule/todo app).
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  termsOfService: http://swagger.io/terms/
+  title: Murim Helper API
+  version: "1.0"
+paths:
+  /schedule:
+    get:
+      consumes:
+      - application/json
+      description: Get all schedules with pagination, filters, and sorting
+      parameters:
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Items per page
+        in: query
+        name: limit
+        type: integer
+      - description: Filter by done status
+        in: query
+        name: is_done
+        type: boolean
+      - description: Filter by repeat type
+        in: query
+        name: repeat_type
+        type: string
+      - description: Search in title/description
+        in: query
+        name: search
+        type: string
+      - description: Sort by field (start_time, end_time, created_at, title)
+        in: query
+        name: sort_by
+        type: string
+      - description: Sort order (asc, desc)
+        in: query
+        name: order
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.PaginatedResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httphelper.ErrorResponse'
+      summary: Get all schedules
+      tags:
+      - schedules
+swagger: "2.0"

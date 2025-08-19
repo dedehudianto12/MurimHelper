@@ -11,6 +11,8 @@ import (
 	"murim-helper/internal/service"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type ScheduleUsecase interface {
@@ -22,6 +24,7 @@ type ScheduleUsecase interface {
 	MarkScheduleAsDone(ctx context.Context, id string) error
 	MarkScheduleAsUndone(ctx context.Context, id string) error
 	DeleteAll(ctx context.Context) error
+	ProcessRepeatingSchedules(ctx context.Context) error
 }
 
 type scheduleUsecase struct {
@@ -154,4 +157,59 @@ func (s *scheduleUsecase) setDoneStatus(ctx context.Context, id string, done boo
 
 func (s *scheduleUsecase) DeleteAll(ctx context.Context) error {
 	return s.repo.DeleteAll(ctx)
+}
+
+func (s *scheduleUsecase) ProcessRepeatingSchedules(ctx context.Context) error {
+	schedules, err := s.repo.GetRepeatingSchedules(ctx)
+	if err != nil {
+		return err
+	}
+
+	for _, sched := range schedules {
+		nextStart, nextEnd := getNextOccurrence(sched)
+		if nextStart == nil || nextEnd == nil {
+			continue
+		}
+
+		// Skip if next occurrence already exists
+		exists, err := s.repo.ExistsByStartTime(ctx, sched.Title, *nextStart)
+		if err != nil {
+			return err
+		}
+		if exists {
+			continue
+		}
+
+		// Create new schedule
+		newSched := sched
+		newSched.ID = uuid.New().String()
+		newSched.StartTime = *nextStart
+		newSched.EndTime = *nextEnd
+		newSched.CreatedAt = time.Now()
+		newSched.IsDone = false
+
+		if err := s.repo.SaveMany(ctx, []domain.Schedule{newSched}); err != nil {
+			return fmt.Errorf("failed to save next occurrence: %w", err)
+		}
+	}
+	return nil
+}
+
+func getNextOccurrence(sched domain.Schedule) (*time.Time, *time.Time) {
+	var nextStart, nextEnd time.Time
+	switch sched.RepeatType {
+	case "daily":
+		nextStart = sched.StartTime.Add(24 * time.Hour)
+		nextEnd = sched.EndTime.Add(24 * time.Hour)
+	case "weekly":
+		nextStart = sched.StartTime.AddDate(0, 0, 7)
+		nextEnd = sched.EndTime.AddDate(0, 0, 7)
+	default:
+		return nil, nil
+	}
+
+	if sched.RepeatUntil != nil && nextStart.After(*sched.RepeatUntil) {
+		return nil, nil
+	}
+	return &nextStart, &nextEnd
 }

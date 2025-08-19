@@ -7,6 +7,7 @@ import (
 	"murim-helper/internal/domain"
 	"murim-helper/internal/dto"
 	"strings"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
@@ -183,4 +184,30 @@ func (r *PostgresRepo) DeleteAll(ctx context.Context) error {
 		return fmt.Errorf("delete all failed: %w", err)
 	}
 	return nil
+}
+
+func (r *PostgresRepo) GetRepeatingSchedules(ctx context.Context) ([]domain.Schedule, error) {
+	var schedules []domain.Schedule
+	query := `
+        SELECT * FROM schedules
+        WHERE repeat_type != 'none'
+        AND (repeat_until IS NULL OR repeat_until > NOW())
+        ORDER BY start_time ASC
+    `
+	if err := r.db.SelectContext(ctx, &schedules, query); err != nil {
+		return nil, fmt.Errorf("failed to fetch repeating schedules: %w", err)
+	}
+	return schedules, nil
+}
+
+func (r *PostgresRepo) ExistsByStartTime(ctx context.Context, title string, start time.Time) (bool, error) {
+	var count int
+	err := r.db.GetContext(ctx, &count, `
+        SELECT COUNT(*) FROM schedules
+        WHERE title = $1 AND start_time = $2
+    `, title, start)
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
 }

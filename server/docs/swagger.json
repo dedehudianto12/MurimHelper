@@ -1,0 +1,133 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "This is the API documentation for Murim Helper (schedule/todo app).",
+        "title": "Murim Helper API",
+        "termsOfService": "http://swagger.io/terms/",
+        "contact": {
+            "name": "API Support",
+            "email": "support@murimhelper.local"
+        },
+        "license": {
+            "name": "MIT",
+            "url": "https://opensource.org/licenses/MIT"
+        },
+        "version": "1.0"
+    },
+    "host": "localhost:8080",
+    "basePath": "/",
+    "paths": {
+        "/schedule": {
+            "get": {
+                "description": "Get all schedules with pagination, filters, and sorting",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "schedules"
+                ],
+                "summary": "Get all schedules",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Items per page",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Filter by done status",
+                        "name": "is_done",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by repeat type",
+                        "name": "repeat_type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search in title/description",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sort by field (start_time, end_time, created_at, title)",
+                        "name": "sort_by",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sort order (asc, desc)",
+                        "name": "order",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.PaginatedResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httphelper.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "dto.PaginatedResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "description": "The actual list of items"
+                },
+                "limit": {
+                    "description": "Items per page",
+                    "type": "integer"
+                },
+                "page": {
+                    "description": "Current page number",
+                    "type": "integer"
+                },
+                "total_items": {
+                    "description": "Total number of items in DB",
+                    "type": "integer"
+                },
+                "total_pages": {
+                    "description": "Total number of pages",
+                    "type": "integer"
+                }
+            }
+        },
+        "httphelper.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer",
+                    "example": 50001
+                },
+                "message": {
+                    "type": "string",
+                    "example": "Internal server error"
+                }
+            }
+        }
+    }
+}

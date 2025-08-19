@@ -8,6 +8,11 @@ import (
 	"murim-helper/internal/domain"
 )
 
+type ErrorResponse struct {
+	Code    int    `json:"code" example:"50001"`
+	Message string `json:"message" example:"Internal server error"`
+}
+
 // Success returns a well-structured successful response
 func Success(w http.ResponseWriter, r *http.Request, statusCode int, message string, payload interface{}) {
 	resp := domain.ApiResponse{
